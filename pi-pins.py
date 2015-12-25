@@ -2,7 +2,17 @@ import os
 import RPi.GPIO as GPIO
 import time
 import re
+import sys, argparse
 
+# Parse Args:
+def mainargs(argv):
+  parser = argparse.ArgumentParser(description='Turn pins on and off on a Raspberry Pi 2 B+.')
+  parser.add_argument('-p', '--pins', type=str, nargs='+', required=False,
+                   help='pins to turn on (comma separated, range of values, or combination of two. Ex: \'14,15-18, 20\')')
+  args = parser.parse_args()
+  return args
+
+# Make sure pins are in valid range, or drop
 def validate(inpins):
     outpins = []
     #2 to 27 is valid pin numbers
@@ -14,6 +24,7 @@ def validate(inpins):
             outpins.append(int(item))
     return outpins
 
+# take comma separated and/or range and make array of pins
 def split_pins(inpins):
   listout = []
   list1 = inpins.split(',')
@@ -29,24 +40,34 @@ def split_pins(inpins):
         #print "no match " + item
         listout.append(int(item))
   return listout
+
+# Main
 GPIO.setmode(GPIO.BCM)
 
+args = mainargs(sys.argv[1:])
 
-strpins = raw_input('Enter Pins (ex: 14,15-17,18))')
+strpins = ''
+# From command line flag or prompt
+if args.pins:
+  strpins =  ','.join(args.pins) # if any spaces, this will flatten it to 1 arg
+  strpins = strpins.replace(",,", ",") # spaces will cause double comma, fixes it
+  #print "STR: " + strpins
+else:
+  strpins = raw_input('Enter Pins (ex: 14,15-17,18)): ')
 
+# parse, validate, sort ascending
 pins = split_pins(strpins)
 pins = validate(pins)
 pins.sort();
 
-print "Pins: "
-print '[%s]' % ', '.join(map(str, pins))
+print "Pins: " + '[%s]' % ', '.join(map(str, pins))
 
 # Can take list so send list of pins to set HIGH:
-#for mypin in listpins:
-# print "Setting: " + str(mypin)
+# Main Action / Runner
 GPIO.setup(pins, GPIO.OUT)
 GPIO.output(pins, GPIO.HIGH)
 
+print "Running (Ctrl-C to quit)..."
 runner = True
 try:
     while (runner == True):
